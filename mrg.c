@@ -3,6 +3,7 @@
 #include <errno.h>
 #include <string.h>
 #include <time.h>
+#include <limits.h>
 #include "config.h"
 #include "bitmap.h"
 #include "matrix.h"
@@ -12,9 +13,7 @@
 struct _stkelem_t 
 {
   /* Weight of this cut. */
-  unsigned weight;
-  /* Offset of the rightmost 1. */
-  unsigned rightmost;
+  int weight;
   /* Offset of the rightmost 1 in the future new element
      generated from this element.*/
   unsigned next;
@@ -25,7 +24,7 @@ typedef struct _stkelem_t stkelem_t;
 
 
 /* Number of nodes. */
-unsigned N = 10;
+unsigned N = 0;
 /* Stack for DFS algorithm. */
 list_t * stack;
 /* */
@@ -47,10 +46,9 @@ stkelem_t * best;
 inline
 stkelem_t *
 stkelem_init (stkelem_t * se, unsigned width, unsigned weight, 
-              unsigned rightmost, unsigned next)
+              unsigned next)
 {
-  if (width == 0 || rightmost > width - 1
-      || next > width - 1)
+  if (width == 0 || next > width - 1)
     abort ();
   
   se->set = bitmap_new (width);
@@ -60,9 +58,7 @@ stkelem_init (stkelem_t * se, unsigned width, unsigned weight,
       return NULL;
     }
   se->weight = weight;
-  se->rightmost = rightmost;
   se->next = next;
-  bitmap_setbit (se->set, rightmost);
   return se;
 }
 
@@ -75,15 +71,14 @@ stkelem_init (stkelem_t * se, unsigned width, unsigned weight,
    @param next offset of the rightmost 1 of future generated element
 */
 stkelem_t * 
-stkelem_new (unsigned width, unsigned weight, unsigned rightmost,
-             unsigned next)
+stkelem_new (unsigned width, unsigned weight, unsigned next)
 {
   stkelem_t * se;
 
   se = malloc (sizeof (stkelem_t));
   if (! se)
     return NULL;
-  if (! stkelem_init (se, width, weight, rightmost, next))
+  if (! stkelem_init (se, width, weight, next))
     {
       free (se);
       return NULL;
@@ -111,6 +106,8 @@ stkelem_clone (const stkelem_t * se)
       free (newse);
       return NULL;
     }
+  newse->weight = se->weight;
+  newse->next = se->next;
   return newse;
 }
 
@@ -159,11 +156,10 @@ error (const char * msg)
 void 
 initialize_stack (void)
 {
-  stkelem_t * el = stkelem_new (N, 0, 0, 0);
+  stkelem_t * el = stkelem_new (N, 0, 0);
   
   if (! el)
     error ("Memory allocation failure");
-  //bitmap_setbit (el->set, 0);
   if (! list_pushback (stack, el))
     error ("list_pushback()");
 }
@@ -176,7 +172,7 @@ void
 initialize (void)
 {
   initialize_stack ();
-  best = stkelem_new (N, 0xffffffff, 0, 0);
+  best = stkelem_new (N, INT_MAX, 0);
   if (! best)
     error ("Memory allocation failure");
 }
@@ -211,11 +207,10 @@ update_weight (stkelem_t * el, unsigned node)
             /* Add weight of edges whose end nodes are now one in
                the set X and the other in the set Y. */
             el->weight += wtrimatrix_get (weights, node, i);
-          
         }
     }
   
-  if (el->weight < best->weight)
+  if (el->weight < best->weight && el->weight > 0)
     best = el;
 
   if (el->weight == 1)
@@ -248,7 +243,6 @@ generate_depth (stkelem_t * el)
       if (! newel)
         error ("Memory allocation failure");
       bitmap_setbit (newel->set, el->next);
-      //newel->rightmost = el->next;
       newel->next = el->next + 1;
       el->next += 1;
       /* Push newel onto DFS stack. */
@@ -320,7 +314,7 @@ main (int argc, char * argv[])
             /* It is, we are done. */
             break;
           else
-            ;
+            continue;
         }
       else
         {
@@ -332,7 +326,7 @@ main (int argc, char * argv[])
 
   /* Print out the solution. */
   /*!!! TODO */
-  printf ("Weight of the best solution: %u\n", best->weight);
+  printf ("Weight of the best solution: %d\n", best->weight);
   
   exit (EXIT_SUCCESS);
 }
