@@ -325,8 +325,23 @@ main (int argc, char * argv[])
     }
 
   /* Print out the solution. */
-  /*!!! TODO */
   printf ("Weight of the best solution: %d\n", best->weight);
+  printf ("Set X:");
+  for (i = 0; i < bitmap_size (best->set); ++i)
+    {
+      int b = bitmap_getbit (best->set, i);
+      if (! b)
+	printf (" %d", i+1);
+    }
+  printf ("\n");
+  printf ("Set Y:");
+  for (i = 0; i < bitmap_size (best->set); ++i)
+    {
+      int b = bitmap_getbit (best->set, i);
+      if (b)
+	printf (" %d", i+1);
+    }
+  printf ("\n");
   
   exit (EXIT_SUCCESS);
 }
