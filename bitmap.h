@@ -6,7 +6,8 @@ extern "C" {
 #endif
 
 #include <inttypes.h>
-  
+#include <stdio.h>
+
 
   struct _bitmap_t;
   /**
@@ -21,10 +22,14 @@ extern "C" {
   extern int bitmap_setbit (const bitmap_t * bm, unsigned pos);
   extern int bitmap_clrbit (const bitmap_t * bm, unsigned pos);
   extern int bitmap_putbit (const bitmap_t * bm, unsigned pos, int val);
+  extern int bitmap_getbit (const bitmap_t * bm, unsigned pos);
   extern int bitmap_flipbit (const bitmap_t * bm, unsigned pos);
   extern bitmap_t * bitmap_clear (bitmap_t * bm);
   extern bitmap_t * bitmap_set (bitmap_t * bm);
+  extern bitmap_t * bitmap_flip (bitmap_t * bm);
   extern unsigned bitmap_size (const bitmap_t * bm);
+  extern int bitmap_print (const bitmap_t * bm, FILE * stream, 
+                           const char * sep);
   
   
 #ifdef __cplusplus

@@ -36,6 +36,7 @@ bytes_from_map (const bitmap_t * bm)
   return elems_from_map (bm) * sizeof (uint32_t);
 }
 
+
 static inline
 unsigned
 bytes_from_size (unsigned size)
@@ -46,18 +47,40 @@ bytes_from_size (unsigned size)
 
 static inline
 unsigned
-index_from_pos (unsigned pos)
+index_for_pos (unsigned pos)
 {
-  return pos / (sizeof (uint32_t) * BITS_PER_CHAR)
-    + (pos % (sizeof (uint32_t) * BITS_PER_CHAR) ? 1 : 0);
+  return pos / (sizeof (uint32_t) * BITS_PER_CHAR);
+}
+
+
+static inline
+uint32_t
+mask_for_pos (unsigned pos)
+{
+  return 1u << (pos % (sizeof (uint32_t) * BITS_PER_CHAR));
+}
+
+
+static inline
+uint32_t
+mask_for_rem (unsigned rem)
+{
+  return 0xffffffffu >> (sizeof (uint32_t) * BITS_PER_CHAR - rem);
 }
 
 
 static inline
 unsigned
-mask_from_pos (unsigned pos)
+rem_from_map (const bitmap_t * bm)
 {
-  return 1 << (pos % (sizeof (uint32_t) * BITS_PER_CHAR));
+  return bm->size % (sizeof (uint32_t) * BITS_PER_CHAR);
+}
+
+static inline
+unsigned
+rem_from_size (unsigned size)
+{
+  return size % (sizeof (uint32_t) * BITS_PER_CHAR);
 }
 
 /**
@@ -205,8 +228,8 @@ bitmap_getbit (const bitmap_t * bm, unsigned pos)
 {
   if (pos < bm->size)
     {
-      const unsigned i = index_from_pos (pos);
-      const uint32_t mask = mask_from_pos (pos);
+      const unsigned i = index_for_pos (pos);
+      const uint32_t mask = mask_for_pos (pos);
       uint32_t elem;
       
       elem = bm->buf[i];
@@ -230,8 +253,8 @@ bitmap_putbit (const bitmap_t * bm, unsigned pos, int val)
 {
   if (pos < bm->size)
     {
-      const unsigned i = index_from_pos (pos);
-      const uint32_t mask = mask_from_pos (pos);
+      const unsigned i = index_for_pos (pos);
+      const uint32_t mask = mask_for_pos (pos);
       uint32_t elem;
       int prev;
       
@@ -260,7 +283,8 @@ int bitmap_flipbit (const bitmap_t * bm, unsigned pos)
   if (pos < bm->size)
     {
       const int prev = bitmap_getbit (bm, pos);
-      const int newbit = !prev;
+      const int newbit = ! prev;
+      
       bitmap_putbit (bm, pos, newbit);
       return prev;
     }
@@ -280,8 +304,8 @@ bitmap_setbit (const bitmap_t * bm, unsigned pos)
 {
   if (pos < bm->size)
     {
-      const unsigned i = index_from_pos (pos);
-      const uint32_t mask = mask_from_pos (pos);
+      const unsigned i = index_for_pos (pos);
+      const uint32_t mask = mask_for_pos (pos);
       uint32_t elem;
       int prev;
       
@@ -306,8 +330,8 @@ bitmap_clrbit (const bitmap_t * bm, unsigned pos)
 {
   if (pos < bm->size)
     {
-      const unsigned i = index_from_pos (pos);
-      const uint32_t mask = mask_from_pos (pos);
+      const unsigned i = index_for_pos (pos);
+      const uint32_t mask = mask_for_pos (pos);
       uint32_t elem;
       int prev;
       
@@ -327,7 +351,8 @@ bitmap_clrbit (const bitmap_t * bm, unsigned pos)
    @param bm bitmap
    @return bitmap
  */
-bitmap_t * bitmap_clear (bitmap_t * bm)
+bitmap_t * 
+bitmap_clear (bitmap_t * bm)
 {
   memset (bm->buf, 0, bytes_from_map (bm));
   return bm;
@@ -339,28 +364,83 @@ bitmap_t * bitmap_clear (bitmap_t * bm)
    @param bm bitmap
    @return bitmap
  */
-bitmap_t * bitmap_set (bitmap_t * bm)
+bitmap_t * 
+bitmap_set (bitmap_t * bm)
 {
-  const unsigned setsize = bm->size / (sizeof (uint32_t) * BITS_PER_CHAR);
-  const unsigned rem = bm->size % (sizeof (uint32_t) * BITS_PER_CHAR);
-
-  memset (bm->buf, 0xffffffffu, setsize);
+  const unsigned rem = rem_from_map (bm);
+  const unsigned setsize = 
+    bytes_from_map (bm) - (rem ? sizeof (uint32_t) : 0);
+  
+  memset (bm->buf, 0xff, setsize);
   if (rem != 0)
     {
-      const unsigned mask = 
-        0xffffffffu >> (sizeof (uint32_t) * BITS_PER_CHAR - rem);
-      bm->buf[setsize + 1] |= mask;
+      const unsigned mask = mask_for_rem (rem);
+      bm->buf[elems_from_map (bm) - 1] |= mask;
     }
   return bm;
 }
 
 
 /**
+   Flips all bits in bitmap.
+   @param bm bitmap
+   @return bitmap
+ */
+bitmap_t * 
+bitmap_flip (bitmap_t * bm)
+{
+  const unsigned rem = rem_from_map (bm);
+  const unsigned flipelems = elems_from_map (bm) - (rem ? 1 : 0);
+  unsigned i;
+  
+  for (i = 0; i < flipelems; ++i)
+    bm->buf[i] = ~bm->buf[i];
+  if (rem != 0)
+    {
+      const uint32_t mask = mask_for_rem (rem);
+      bm->buf[i] = ~bm->buf[i] & mask;
+    }
+  return bm;
+}
+
+/**
    Return number of bits in bitmap.
    @param bm bitmap
    @return number of bits
  */
-unsigned bitmap_size (const bitmap_t * bm)
+inline
+unsigned 
+bitmap_size (const bitmap_t * bm)
 {
   return bm->size;
+}
+
+
+/**
+   Prints bitmap to a stream.
+   @param bm bitmap
+   @param stream output stream
+   @param sep separator
+   @return number of bytes written or -1 on error
+*/
+int 
+bitmap_print (const bitmap_t * bm, FILE * stream, const char * sep)
+{
+  int ret, count = 0;
+  unsigned i;
+  
+  if (bm->size == 0)
+    abort ();
+  ret = fprintf (stream, "%d", bitmap_getbit (bm, 0));
+  if (ret < 0)
+    return ret;
+  count += ret;
+  for (i = 1; i < bitmap_size (bm); ++i)
+    {
+      ret = fprintf (stream, "%s%d", sep, bitmap_getbit (bm, i));
+      if (ret < 0)
+        return ret;
+      count += ret;
+    }
+  return count;
 }
