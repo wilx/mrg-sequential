@@ -15,9 +15,9 @@ struct _stkelem_t
   unsigned weight;
   /* Offset of the rightmost 1. */
   unsigned rightmost;
-  /* Offset of the rightmost 1 in the last generated new element 
-     from this element.*/
-  int last;
+  /* Offset of the rightmost 1 in the future new element
+     generated from this element.*/
+  unsigned next;
   /* Representation of X and Y sets. */
   bitmap_t * set;
 };
@@ -47,10 +47,10 @@ stkelem_t * best;
 inline
 stkelem_t *
 stkelem_init (stkelem_t * se, unsigned width, unsigned weight, 
-              unsigned rightmost, unsigned last)
+              unsigned rightmost, unsigned next)
 {
   if (width == 0 || rightmost > width - 1
-      || last > width - 1)
+      || next > width - 1)
     abort ();
   
   se->set = bitmap_new (width);
@@ -61,7 +61,7 @@ stkelem_init (stkelem_t * se, unsigned width, unsigned weight,
     }
   se->weight = weight;
   se->rightmost = rightmost;
-  se->last = last;
+  se->next = next;
   bitmap_setbit (se->set, rightmost);
   return se;
 }
@@ -72,18 +72,18 @@ stkelem_init (stkelem_t * se, unsigned width, unsigned weight,
    @param width width of bitmap/set
    @param weight weight of cut in this step
    @param rightmost offset of the rightmost 1 in bitmap/set
-   @param last offset of the last 1 in the last generated element
+   @param next offset of the rightmost 1 of future generated element
 */
 stkelem_t * 
 stkelem_new (unsigned width, unsigned weight, unsigned rightmost,
-             int last)
+             unsigned next)
 {
   stkelem_t * se;
 
   se = malloc (sizeof (stkelem_t));
   if (! se)
     return NULL;
-  if (! stkelem_init (se, width, weight, rightmost, last))
+  if (! stkelem_init (se, width, weight, rightmost, next))
     {
       free (se);
       return NULL;
@@ -97,7 +97,6 @@ stkelem_new (unsigned width, unsigned weight, unsigned rightmost,
    @param se stack element
    @return copy of the stack element
 */
-inline
 stkelem_t * 
 stkelem_clone (const stkelem_t * se)
 {
@@ -117,25 +116,34 @@ stkelem_clone (const stkelem_t * se)
 
 
 /**
-   Clones DFS stack element and also sets bit at offset.
-   @param se stack element
-   @param offset offset of a bit to set
-   @return copy of the stack element
+
 */
-stkelem_t *
-stkelem_clone_2 (const stkelem_t * se, unsigned offset)
+inline
+void 
+stkelem_destroy (const stkelem_t * se)
 {
-  stkelem_t * newse = stkelem_clone (se);
-  
-  if (! newse)
-    return NULL;
-  bitmap_setbit (newse->set, offset);
-  return newse;
+  bitmap_delete (se->set);
 }
 
 
-/* void error (const char * msg) /*__attribute__((noreturn));*/
-void error (const char * msg)
+/**
+ 
+*/
+void
+stkelem_delete (stkelem_t * se)
+{
+  stkelem_destroy (se);
+  free (se);
+}
+
+
+/**
+   Prints msg and possible message for errno to stderr and 
+   exits with EXIT_FAILURE.
+   @param msg user supplied message
+*/
+void 
+error (const char * msg)
 {
   if (! errno)
     fprintf (stderr, "%s\n", msg);
@@ -145,94 +153,113 @@ void error (const char * msg)
 }
 
 
-int 
-update_weight (stkelem_t * el, unsigned plus, unsigned minus)
-{
-  
-}
-
-
+/**
+   Initializes stack for DFS algoritm.
+*/
 void 
 initialize_stack (void)
 {
-  stkelem_t * el = stkelem_new (N, 0, 0, -1);
+  stkelem_t * el = stkelem_new (N, 0, 0, 0);
   
   if (! el)
     error ("Memory allocation failure");
-  bitmap_setbit (el->set, 0);
+  //bitmap_setbit (el->set, 0);
   if (! list_pushback (stack, el))
     error ("list_pushback()");
 }
 
 
 /**
-
-   Generates next element of DFS solution tree at the same level.
-   @param el paret element
-   @param pnewel pointer to pointer where the next
-   @return 1 if there was next element or 0 if there wasn't any
+   Global initialization of computation.
 */
-int 
-generate_next (stkelem_t * el, stkelem_t ** pnewel)
+void
+initialize (void)
 {
-  stkelem_t * newel;
-  unsigned next = el->last + 1;
-  
-  if (next < N)
-    {
-      newel = stkelem_clone_2 (el, next);
-      if (! newel)
-        error ("Memory allocation failure");
-    }
-  else
-    return 0;
-  el->last = next;
-  *pnewel = newel;
-  return 1;
+  initialize_stack ();
+  best = stkelem_new (N, 0xffffffff, 0, 0);
+  if (! best)
+    error ("Memory allocation failure");
 }
 
 
 /**
-   Generates count new elements either from el on the same level of DFS tree
-   or this and 
+   Updates weight of cut when we move one node from set X to Y.
+   @param el element of DFS tree to update
+   @param node node that has been moved from X to Y
+   @return true if the cut has weight 1, false otherwise
 */
 int 
-generate_next_level (stkelem_t * el, unsigned count)
+update_weight (stkelem_t * el, unsigned node)
 {
-  stkelem_t * newel;
-  
-  while (1)
+  unsigned i;
+
+  if (node == 0)
+    abort ();
+
+  for (i = 1; i <= N; ++i)
     {
-      int ret;
-      /* Try to generate more elements from the same level of DFS tree. */
-      while ((ret = generate_next (el, &newel)) && count)
+      if (i == node)
+        continue;
+      if (trimatrix_get (graph, node, i))
         {
-          list_push (stack, newel);
-          --count;
-          /* ??? Who computes the new weight of the cut? */
+          /* Is node i in set Y? */
+          if (bitmap_getbit (el->set, i-1))
+            /* Substract weight of edges whose end nodes are now
+               both in Y from the weight of the cut. */
+            el->weight -= wtrimatrix_get (weights, node, i);
+          else
+            /* Add weight of edges whose end nodes are now one in
+               the set X and the other in the set Y. */
+            el->weight += wtrimatrix_get (weights, node, i);
+          
         }
-      /* Are we at the end of the search space? */
-      if (! ret && el->rightmost == N-1)
-        return 0;
-      /* Try to move to the next level of DFS tree and generate. */
-      if (! ret && count && el->rightmost < N-1)
-        {
-          newel = stkelem_clone (el);
-          if (! el)
-            error ("Memory allocation failure");
-          bitmap_clrbit (newel->set, el->rightmost);
-          bitmap_setbit (newel->set, el->rightmost + 1);
-          newel->rightmost += 1;
-          newel->last = newel->rightmost;
-          --count;
-          list_push (stack, newel);
-          /* ??? Who computes the new weight of the cut? */
-        }
-      else
-        return 1;
     }
+  
+  if (el->weight < best->weight)
+    best = el;
+
+  if (el->weight == 1)
+    return 1;
+  else
+    return 0;
 }
 
+
+/**
+   Generates next level of DFS tree from element el and pushes it 
+   onto DFS stack.
+   @param el element
+   @return true if the next element was successfully generated,
+   false otherwise.
+*/
+int
+generate_depth (stkelem_t * el)
+{
+  stkelem_t * newel;
+
+  /* Is it possible to go deeper in DFS tree? */
+  if (el->next < N)
+    {
+      /* el:    [1 0 0 ... 0]
+         |        
+         v        
+         newel: [1 1 0 ... 0] */
+      newel = stkelem_clone (el);
+      if (! newel)
+        error ("Memory allocation failure");
+      bitmap_setbit (newel->set, el->next);
+      //newel->rightmost = el->next;
+      newel->next = el->next + 1;
+      el->next += 1;
+      /* Push newel onto DFS stack. */
+      if (! list_push (stack, newel))
+        error ("list_push()");
+      return 1;
+    }
+  else
+    return 0;
+}
+  
 
 int 
 main (int argc, char * argv[])
@@ -270,6 +297,42 @@ main (int argc, char * argv[])
         if (val)
           wtrimatrix_set (weights, i, j, random () % 255 + 1);
       }
+
+  /* Do the actual work here.  */
+  initialize ();
+  while (1)
+    {
+      listelem_t * it;
+      stkelem_t * el;
+      
+      el = list_first (stack, &it);
+      if (! el)
+        break;
+      /* Move deeper in DFS tree if possible. */
+      if (generate_depth (el))
+        {
+          /* Get the newly generated element. */
+          el = list_first (stack, &it);
+          /* Update weight of a new cut.
+             Is this a cut of weight 1? 
+             Note: el->next because nodes are numbered from 1. */
+          if (update_weight (el, el->next)) 
+            /* It is, we are done. */
+            break;
+          else
+            ;
+        }
+      else
+        {
+          stkelem_t * se = list_pop (stack);
+          if (se != best)
+            stkelem_delete (se);
+        }
+    }
+
+  /* Print out the solution. */
+  /*!!! TODO */
+  printf ("Weight of the best solution: %u\n", best->weight);
   
   exit (EXIT_SUCCESS);
 }

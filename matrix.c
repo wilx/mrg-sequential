@@ -21,7 +21,7 @@ static inline
 unsigned
 elems_from_n (unsigned n)
 {
-  return (unsigned)((n * ( n + 1ull)) / 2);
+  return (unsigned)((n * (n + 1ull)) / 2);
 }
 
 
@@ -38,7 +38,7 @@ index_for_nxy (unsigned _n, unsigned x, unsigned y)
       y = tmp;
     }
   return (unsigned)(((y - 1) * (n + (n - (y-1-1)))) / 2
-                    + (x - 1));
+                    + (x - (y - 1)) - 1);
 }
 
 
