@@ -1,6 +1,8 @@
 #ifndef _LIST_H_
 #define _LIST_H_
 
+#include "config.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif

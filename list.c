@@ -342,7 +342,7 @@ inline
 void * 
 list_next (listelem_t ** pel)
 {
-  (*pel) = (*pel)->next;
+  *pel = (*pel)->next;
   if (*pel)
     return (*pel)->data;
   else
@@ -359,7 +359,7 @@ inline
 void * 
 list_prev (listelem_t ** pel)
 {
-  (*pel) = (*pel)->prev;
+  *pel = (*pel)->prev;
   if (*pel)
     return (*pel)->data;
   else
@@ -376,7 +376,7 @@ inline
 void * 
 list_first (const list_t * l, listelem_t ** pel)
 {
-  (*pel) = l->first;
+  *pel = l->first;
   if (*pel)
     return (*pel)->data;
   else
@@ -393,7 +393,7 @@ inline
 void * 
 list_last (const list_t * l, listelem_t ** pel)
 {
-  (*pel) = l->last;
+  *pel = l->last;
   if (*pel)
     return (*pel)->data;
   else

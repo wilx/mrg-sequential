@@ -1,4 +1,4 @@
-AM_CFLAGS=-O2 -g -W -Wall
+AM_CFLAGS=
 noinst_PROGRAMS = test_bitmap mrg
 test_bitmap_SOURCES = test_bitmap.c matrix.c matrix.h bitmap.c bitmap.h
 test_bitmap_SOURCES += list.c list.h

@@ -3,6 +3,7 @@
 
 #include <inttypes.h>
 #include <stdio.h>
+#include "config.h"
 
 #ifdef __cplusplus
 extern "C" {

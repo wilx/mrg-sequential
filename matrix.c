@@ -29,7 +29,7 @@ static inline
 unsigned
 index_for_nxy (unsigned _n, unsigned x, unsigned y)
 {
-  const unsigned long long n = _n;
+  const unsigned long n = _n;
 
   if (y > x)
     {

@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define BITS_PER_CHAR 8
+#define BITS_PER_CHAR (8*SIZEOF_CHAR)
 
 struct _bitmap_t
 {
