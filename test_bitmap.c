@@ -65,10 +65,11 @@ int main (void)
 
   /* Check enlarging. */
   {
+    bitmap_t * ret;
     bitmap_set (bm);
     bitmap_print (bm, stdout, " ");
     printf ("\n");
-    bitmap_t * ret = bitmap_resize (bm, 43);
+    ret = bitmap_resize (bm, 43);
     if (! ret)
       abort ();
     bitmap_print (bm, stdout, " ");
@@ -77,10 +78,11 @@ int main (void)
 
   /* Check shrinking. */
   {
+    bitmap_t * ret;
     bitmap_set (bm);
     bitmap_print (bm, stdout, " ");
     printf ("\n");
-    bitmap_t * ret = bitmap_resize (bm, 21);
+    ret = bitmap_resize (bm, 21);
     if (! ret)
       abort ();
     bitmap_print (bm, stdout, " ");

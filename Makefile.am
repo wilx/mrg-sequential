@@ -1,5 +1,6 @@
-AM_CFLAGS=-O2 -g
-noinst_PROGRAMS = test_bitmap
+AM_CFLAGS=-O2 -g -W -Wall
+noinst_PROGRAMS = test_bitmap mrg
 test_bitmap_SOURCES = test_bitmap.c matrix.c matrix.h bitmap.c bitmap.h
-EXTRA_DIST = config.sub config.guess depcomp aclocal.m4 config.h.in
+test_bitmap_SOURCES += list.c list.h
+mrg_SOURCES = mrg.c matrix.c matrix.h bitmap.c bitmap.h list.c list.h
 

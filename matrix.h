@@ -26,7 +26,8 @@ extern "C" {
   extern void trimatrix_destruct (trimatrix_t * mx);
   extern trimatrix_t * trimatrix_clone (const trimatrix_t * mx);
   extern int trimatrix_get (const trimatrix_t * mx, unsigned x, unsigned y);
-  extern int trimatrix_set (trimatrix_t * mx, unsigned x, unsigned y, int val);
+  extern int trimatrix_set (const trimatrix_t * mx, 
+                            unsigned x, unsigned y, int val);
 
   /**
      Upper triangular matrix with diagonal with elements of type 
@@ -40,7 +41,10 @@ extern "C" {
   extern void wtrimatrix_delete (wtrimatrix_t * mx);
   extern void wtrimatrix_destruct (wtrimatrix_t * mx);
   extern wtrimatrix_t * wtrimatrix_clone (const wtrimatrix_t * mx);
-  extern unsigned wtrimatrix_get (const wtrimatrix_t * mx, unsigned x, unsigned y);
+  extern unsigned wtrimatrix_get (const wtrimatrix_t * mx, 
+                                  unsigned x, unsigned y);
+  extern unsigned wtrimatrix_set (const wtrimatrix_t * mx, 
+                                  unsigned x, unsigned y, unsigned char val);
 
 #ifdef __cplusplus
 }

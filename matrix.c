@@ -156,7 +156,7 @@ trimatrix_get (const trimatrix_t * mx, unsigned x, unsigned y)
 */
 inline
 int
-trimatrix_set (trimatrix_t * mx, unsigned x, unsigned y, int val)
+trimatrix_set (const trimatrix_t * mx, unsigned x, unsigned y, int val)
 {
   if (x > mx->n || y > mx->n 
       || x == 0 || y == 0)
@@ -183,6 +183,7 @@ wtrimatrix_init (wtrimatrix_t * mx, unsigned n)
   mx->buf = malloc (elems_from_n (n));
   if (! mx->buf)
     return NULL;
+  memset (mx->buf, 0, elems_from_n (n));
   mx->n = n;
   return mx;
 }
@@ -251,6 +252,7 @@ wtrimatrix_get (const wtrimatrix_t * mx, unsigned x, unsigned y)
   if (x > mx->n || y > mx->n
       || x == 0 || y == 0)
     abort ();
+
   return (unsigned)mx->buf[index_for_nxy (mx->n, x, y)];
 }
 
