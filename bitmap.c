@@ -92,23 +92,52 @@ bitmap_t *
 bitmap_new (unsigned size)
 {
   bitmap_t * bm;
-  const unsigned bytes = bytes_from_size (size);
   
   if (size == 0)
     abort ();
   
   bm = malloc (sizeof (bitmap_t));
-  if (!bm)
+  if (! bm)
     return NULL;
-  bm->buf = malloc (bytes);
-  if (! bm->buf)
+  if (! bitmap_init (bm, size))
     {
       free (bm);
       return NULL;
     }
+  else
+    return bm;
+}
+
+
+/**
+   Initializes/constructs bitmap.
+   @param bm bitmap
+   @param size number of bit
+   @return first parameter
+ */
+bitmap_t *
+bitmap_init (bitmap_t * bm, unsigned size)
+{
+  const unsigned bytes = bytes_from_size (size);
+
+  bm->buf = malloc (bytes);
+  if (! bm->buf)
+    return NULL;
   memset (bm->buf, 0, bytes);
   bm->size = size;
   return bm;
+}
+
+
+/**
+   Destructor for bitmap.
+   @param bm bitmap
+*/
+inline
+void 
+bitmap_destruct (bitmap_t * bm)
+{
+  free (bm->buf);
 }
 
 
@@ -119,7 +148,7 @@ bitmap_new (unsigned size)
 void 
 bitmap_delete (bitmap_t * bm)
 {
-  free (bm->buf);
+  bitmap_destruct (bm);
   free (bm);
 }
 
@@ -174,6 +203,9 @@ bitmap_t * bitmap_resize (bitmap_t * bm, unsigned size)
     newbuf = realloc (bm->buf, newbytes);
   else 
     newbuf = bm->buf;
+  /* Test for realloc()'s failure. */
+  if (! newbuf)
+    return NULL;
   /* Clear potentially uninitialized bits. */
   /* Enlarged bitmap with more bytes allocated. */
   if (newbytes > oldbytes)
@@ -429,8 +461,6 @@ bitmap_print (const bitmap_t * bm, FILE * stream, const char * sep)
   int ret, count = 0;
   unsigned i;
   
-  if (bm->size == 0)
-    abort ();
   ret = fprintf (stream, "%d", bitmap_getbit (bm, 0));
   if (ret < 0)
     return ret;
