@@ -1,3 +1,4 @@
+AUTOMAKE_OPTIONS=foreign dist-bzip2
 AM_CFLAGS=
 noinst_PROGRAMS = test_bitmap mrg
 test_bitmap_SOURCES = test_bitmap.c matrix.c matrix.h bitmap.c bitmap.h
